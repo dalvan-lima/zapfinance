@@ -6,6 +6,9 @@ const adminBot = new Client({
     clientId: "admin"
   }),
   puppeteer: {
+    webCache: {
+    type: "none"
+  },
   executablePath: '/usr/bin/chromium-browser',
   args: [
     "--no-sandbox",

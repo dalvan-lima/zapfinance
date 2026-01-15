@@ -12,6 +12,9 @@ const client = new Client({
   }),
 puppeteer: {
   executablePath: '/usr/bin/chromium-browser',
+  webCache: {
+    type: "none"
+  },
   args: [
     "--no-sandbox",
     "--disable-setuid-sandbox",
