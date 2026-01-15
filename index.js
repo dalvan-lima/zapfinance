@@ -1,8 +1,8 @@
-const { Client, LocalAuth, MessageMedia } = require('whatsapp-web.js');
-const qrcode = require('qrcode');
-const qrcodeTerminal = require('qrcode-terminal');
-const adminBot = require('./adminBot');
-const { handleCommand } = require('./handleCommand');
+const { Client, LocalAuth, MessageMedia } = require("whatsapp-web.js");
+const qrcode = require("qrcode");
+const qrcodeTerminal = require("qrcode-terminal");
+const adminBot = require("./adminBot");
+const { handleCommand } = require("./handleCommand");
 
 const ADMIN_NUMBER = "5511949933721@c.us"; // seu número
 
@@ -21,19 +21,21 @@ const client = new Client({
 });
 
 /* ================= QR ================= */
-client.on("qr", async qr => {
+client.on("qr", async (qr) => {
   console.log("⚠️ ZapBot precisa de QR");
 
   // QR no terminal
   qrcodeTerminal.generate(qr, { small: true });
 
   try {
-    // QR em imagem
+    // Gera QR em base64
     const img = await qrcode.toDataURL(qr);
     const base64 = img.replace(/^data:image\/png;base64,/, "");
-    const media = MessageMedia.fromBase64(base64, "image/png", "qrcode.png");
 
-    // Enviar QR no WhatsApp
+    // Cria mídia corretamente (1.34+)
+    const media = new MessageMedia("image/png", base64, "qrcode.png");
+
+    // Envia no WhatsApp
     await adminBot.sendMessage(ADMIN_NUMBER, media);
     await adminBot.sendMessage(
       ADMIN_NUMBER,
@@ -50,12 +52,12 @@ client.on("ready", () => {
 });
 
 /* ================= DISCONNECTED ================= */
-client.on("disconnected", reason => {
+client.on("disconnected", (reason) => {
   console.log("⚠️ ZapBot desconectado:", reason);
 });
 
 /* ================= MESSAGES ================= */
-client.on("message_create", async message => {
+client.on("message_create", async (message) => {
   try {
     // Evita loop: ignora mensagens enviadas pelo próprio bot
     if (message.fromMe) return;
