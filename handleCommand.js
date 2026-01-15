@@ -108,6 +108,48 @@ function handleCommand(message) {
     return `📆 Mês de ${capitalize(nome)} fechado. Parcelas atualizadas.`;
   }
 
+    if (comando === "instrucoes") {
+    return (
+        `🤖 *ZapFinance — Instruções de uso*
+
+        Todos os comandos seguem o padrão:
+        !comando/nome <valores>
+
+        📌 *Registrar gasto*
+        !gasto/joao 50 mercado  
+        → João gastou R$50 em mercado
+
+        📌 *Registrar receita*
+        !receita/joao 2500 salario
+
+        📌 *Registrar gasto fixo*
+        !fixo/joao 1200 aluguel todo  
+        !fixo/joao 300 curso parcelado 6  
+
+        📌 *Definir limite mensal*
+        !limite/joao 2000  
+
+        📌 *Definir meta de economia*
+        !meta/joao 800  
+
+        📌 *Ver resumo*
+        !resumo/joao  
+
+        📌 *Previsão até fim do mês*
+        !previsao/joao  
+
+        📌 *Fechar mês*
+        !fechar_mes/joao  
+
+        ━━━━━━━━━━━━━━  
+        💡 *Dica:*  
+        Categorias podem ser qualquer coisa: mercado, ifood, lazer, aluguel, etc.
+        O sistema soma tudo automaticamente.
+        `
+    );
+  }
+
+
   return null;
 }
 
