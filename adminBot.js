@@ -6,7 +6,7 @@ const adminBot = new Client({
     clientId: "admin"
   }),
   puppeteer: {
-  executablePath: '/usr/bin/google-chrome',
+  executablePath: '/usr/bin/chromium-browser',
   args: [
     "--no-sandbox",
     "--disable-setuid-sandbox",
