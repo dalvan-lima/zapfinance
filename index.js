@@ -66,7 +66,7 @@ client.on("disconnected", (reason) => {
 client.on("message_create", async (message) => {
   try {
     // Evita loop: ignora mensagens enviadas pelo próprio bot
-    if (message.fromMe) return;
+    // if (message.fromMe) return;
 
     const resposta = handleCommand(message);
     if (resposta) {
