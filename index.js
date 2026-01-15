@@ -10,14 +10,17 @@ const client = new Client({
   authStrategy: new LocalAuth({
     clientId: "zapbot"
   }),
-  puppeteer: {
-    executablePath: "/usr/bin/google-chrome",
-    args: [
-      "--no-sandbox",
-      "--disable-setuid-sandbox",
-      "--disable-dev-shm-usage"
-    ]
-  }
+puppeteer: {
+  executablePath: '/usr/bin/chromium-browser',
+  args: [
+    "--no-sandbox",
+    "--disable-setuid-sandbox",
+    "--disable-dev-shm-usage",
+    "--disable-gpu",
+    "--no-zygote",
+    "--single-process"
+  ]
+}
 });
 
 /* ================= QR ================= */
