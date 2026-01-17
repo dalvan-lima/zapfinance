@@ -25,7 +25,7 @@ function handleCommand(message) {
   const texto = textoOriginal.toLowerCase();
 
   /* =====================
-     COMANDO GLOBAL
+     INSTRUÇÕES
   ===================== */
   if (texto.startsWith("!instrucoes")) {
     return (
@@ -60,9 +60,19 @@ Todos os comandos seguem o padrão:
 !fechar_mes/joao
 
 ━━━━━━━━━━━━━━
+✏️ *Editar gasto*
+!corrigir/joao
+!corrigir/joao 2 valor 40
+!corrigir/joao 2 categoria restaurante
+!corrigir/joao 2 valor 40 categoria restaurante
+
+🗑️ *Remover gasto*
+!remover/joao
+!remover/joao 2
+
 💡 *Dica:*  
-As categorias são livres (mercado, ifood, lazer, aluguel).
-O sistema soma tudo automaticamente.
+Os números mostrados são apenas para escolha visual.
+O sistema usa ID interno com segurança.
 `
     );
   }
@@ -89,120 +99,79 @@ O sistema soma tudo automaticamente.
 
     db.addGasto(nome, valor, categoria);
 
-    let resposta = `✅ ${capitalize(nome)} gastou ${formatMoney(valor)} em ${capitalize(categoria)}.`;
+    return `✅ ${capitalize(nome)} gastou ${formatMoney(valor)} em ${capitalize(categoria)}.`;
+  }
 
-    const limite = db.getLimite(nome);
-    if (limite) {
-      const total = db.getTotalGastos(nome);
-      const pct = (total / limite) * 100;
+  /* =====================
+     CORRIGIR GASTO
+  ===================== */
+  if (comando === "corrigir") {
+    const gastos = db.getUltimosGastos(nome, 5);
 
-      if (pct > 100)
-        resposta += `\n🚨 Estourou o limite de ${formatMoney(limite)}!`;
-      else if (pct > 80)
-        resposta += `\n⚠️ Já usou ${pct.toFixed(1)}% do limite.`;
+    if (!partes.length) {
+      if (!gastos.length) return "⚠️ Nenhum gasto encontrado.";
+
+      let txt = `📝 *Gastos recentes de ${capitalize(nome)}*\n\n`;
+      gastos.forEach((g, i) => {
+        txt += `${i + 1}) [${g.data}] ${capitalize(g.categoria)} - ${formatMoney(g.valor)}\n`;
+      });
+
+      txt += `
+\nUse:
+!corrigir/${nome} <número> valor <novo_valor>
+!corrigir/${nome} <número> categoria <nova_categoria>
+!corrigir/${nome} <número> valor <novo_valor> categoria <nova_categoria>
+`;
+      return txt;
     }
 
-    return resposta;
-  }
+    const index = parseInt(partes[0]) - 1;
+    const gasto = gastos[index];
+    if (!gasto) return "⚠️ Número inválido.";
 
-  /* =====================
-     RECEITA
-  ===================== */
-  if (comando === "receita") {
-    const valor = parseFloat(partes[0]);
-    const desc = partes.slice(1).join(" ");
+    let novoValor;
+    let novaCategoria;
 
-    if (isNaN(valor))
-      return "⚠️ Use: !receita/<nome> <valor> <descrição>";
+    for (let i = 1; i < partes.length; i++) {
+      if (partes[i] === "valor") novoValor = parseFloat(partes[i + 1]);
+      if (partes[i] === "categoria") novaCategoria = partes[i + 1];
+    }
 
-    db.addReceita(nome, valor, desc);
-    return `💰 ${capitalize(nome)} recebeu ${formatMoney(valor)}.`;
-  }
+    if (novoValor === undefined && !novaCategoria)
+      return "⚠️ Nada para corrigir.";
 
-  /* =====================
-     FIXO
-  ===================== */
-  if (comando === "fixo") {
-    const valor = parseFloat(partes[0]);
-    const desc = partes[1];
-    const tipo = partes[2];
-    const meses = parseInt(partes[3]);
-
-    if (isNaN(valor) || !desc || !tipo)
-      return "⚠️ Use: !fixo/<nome> <valor> <desc> <todo|parcelado> [meses]";
-
-    db.addFixo(nome, valor, desc, tipo, meses);
-    return `📌 Fixo registrado para ${capitalize(nome)}.`;
-  }
-
-  /* =====================
-     LIMITE
-  ===================== */
-  if (comando === "limite") {
-    const valor = parseFloat(partes[0]);
-    if (isNaN(valor)) return "⚠️ Use: !limite/<nome> <valor>";
-
-    db.setLimite(nome, valor);
-    return `📊 Limite de ${capitalize(nome)} definido em ${formatMoney(valor)}.`;
-  }
-
-  /* =====================
-     META
-  ===================== */
-  if (comando === "meta") {
-    const valor = parseFloat(partes[0]);
-    if (isNaN(valor)) return "⚠️ Use: !meta/<nome> <valor>";
-
-    db.setMeta(nome, valor);
-    return `🎯 Meta de economia de ${capitalize(nome)} definida em ${formatMoney(valor)}.`;
-  }
-
-  /* =====================
-     RESUMO
-  ===================== */
-  if (comando === "resumo") {
-    const { gastos, receitas } = db.getResumo(nome);
-    const totalGastos = db.getTotalGastos(nome);
-    const meta = db.getMeta(nome);
-
-    let txt = `📊 *Resumo de ${capitalize(nome)}*\n\n`;
-
-    gastos.forEach(g => {
-      txt += `• ${capitalize(g.categoria)}: ${formatMoney(g.total)}\n`;
+    db.updateGasto(gasto.id, {
+      valor: isNaN(novoValor) ? undefined : novoValor,
+      categoria: novaCategoria
     });
 
-    txt += `\n💸 Gastos: ${formatMoney(totalGastos)}\n`;
-    txt += `💰 Receitas: ${formatMoney(receitas)}\n`;
+    return "✅ Gasto corrigido com sucesso.";
+  }
 
-    const saldo = receitas - totalGastos;
-    txt += `📈 Saldo: ${formatMoney(saldo)}\n`;
+  /* =====================
+     REMOVER GASTO
+  ===================== */
+  if (comando === "remover") {
+    const gastos = db.getUltimosGastos(nome, 5);
 
-    if (meta) {
-      const pct = (saldo / meta) * 100;
-      txt += `🎯 Meta: ${pct.toFixed(1)}% atingido`;
+    if (!partes.length) {
+      if (!gastos.length) return "⚠️ Nenhum gasto encontrado.";
+
+      let txt = `🗑️ *Gastos recentes de ${capitalize(nome)}*\n\n`;
+      gastos.forEach((g, i) => {
+        txt += `${i + 1}) [${g.data}] ${capitalize(g.categoria)} - ${formatMoney(g.valor)}\n`;
+      });
+
+      txt += `\nUse:\n!remover/${nome} <número>`;
+      return txt;
     }
 
-    return txt;
-  }
+    const index = parseInt(partes[0]) - 1;
+    const gasto = gastos[index];
+    if (!gasto) return "⚠️ Número inválido.";
 
-  /* =====================
-     PREVISÃO
-  ===================== */
-  if (comando === "previsao") {
-    const gastos = db.getTotalGastos(nome);
-    const dias = new Date().getDate();
-    const media = gastos / dias;
-    const prev = media * 30;
-
-    return `📅 Previsão de ${capitalize(nome)}: ${formatMoney(prev)} até o fim do mês.`;
-  }
-
-  /* =====================
-     FECHAR MÊS
-  ===================== */
-  if (comando === "fechar_mes") {
-    db.advanceMonth(nome);
-    return `📆 Mês de ${capitalize(nome)} fechado. Parcelas atualizadas.`;
+    db.deleteGasto(gasto.id);
+    return "🗑️ Gasto removido com sucesso.";
   }
 
   return null;
