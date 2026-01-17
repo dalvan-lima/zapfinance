@@ -75,8 +75,7 @@ client.on('disconnected', reason => {
 
 client.on("message_create", async message => {
   try {
-    if (message.from.includes('5511949933721') && message.body.startsWith('[BOT]')) return;
-    if (!message.from.includes('5511949933721') && !message.from.includes('5515997056973')) return;
+    console.log(message)
     if (!message.body?.startsWith("!")) return;
 
     const resposta = handleCommand(message.body);

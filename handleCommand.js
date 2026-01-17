@@ -16,6 +16,13 @@ function capitalize(t = "") {
 }
 
 /* =====================
+   DATE HELPERS
+===================== */
+function getDiasNoMes(ano, mes) {
+  return new Date(ano, mes + 1, 0).getDate();
+}
+
+/* =====================
    HANDLE COMMAND
 ===================== */
 function handleCommand(message) {
@@ -50,10 +57,13 @@ Todos os comandos seguem o padrão:
 📌 *Definir meta de economia*
 !meta/joao 800
 
+📌 *Definir início do mês financeiro*
+!iniciofinanceiro/joao 5
+
 📌 *Ver resumo*
 !resumo/joao
 
-📌 *Previsão até fim do mês*
+📌 *Previsão até fim do mês financeiro*
 !previsao/joao
 
 📌 *Fechar mês*
@@ -69,10 +79,6 @@ Todos os comandos seguem o padrão:
 🗑️ *Remover gasto*
 !remover/joao
 !remover/joao 2
-
-💡 *Dica:*  
-Os números mostrados são apenas para escolha visual.
-O sistema usa ID interno com segurança.
 `
     );
   }
@@ -99,7 +105,138 @@ O sistema usa ID interno com segurança.
 
     db.addGasto(nome, valor, categoria);
 
-    return `✅ ${capitalize(nome)} gastou ${formatMoney(valor)} em ${capitalize(categoria)}.`;
+    let resposta = `✅ ${capitalize(nome)} gastou ${formatMoney(valor)} em ${capitalize(categoria)}.`;
+
+    /* ===== LIMITE ===== */
+    const limite = db.getLimite(nome);
+    if (limite) {
+      const total = db.getTotalGastos(nome);
+      const pct = (total / limite) * 100;
+
+      if (pct > 100)
+        resposta += `\n🚨 Estourou o limite de ${formatMoney(limite)}!`;
+      else if (pct > 80)
+        resposta += `\n⚠️ Já usou ${pct.toFixed(1)}% do limite.`;
+    }
+
+    /* ===== META ===== */
+    const meta = db.getMeta(nome);
+    if (meta) {
+      const receitas = db.getReceitas(nome);
+      const gastos = db.getTotalGastos(nome);
+      const saldo = receitas - gastos;
+
+      if (saldo <= 0) {
+        resposta += `\n🚨 Atenção: com esse gasto, não é mais possível atingir a meta de ${formatMoney(meta)}.`;
+      } else {
+        const pctMeta = (saldo / meta) * 100;
+        resposta += `\n🎯 Meta: ${pctMeta.toFixed(1)}% ainda garantido.`;
+      }
+    }
+
+    return resposta;
+  }
+
+  /* =====================
+     RECEITA
+  ===================== */
+  if (comando === "receita") {
+    const valor = parseFloat(partes[0]);
+    const desc = partes.slice(1).join(" ");
+
+    if (isNaN(valor))
+      return "⚠️ Use: !receita/<nome> <valor> <descrição>";
+
+    db.addReceita(nome, valor, desc);
+    return `💰 ${capitalize(nome)} recebeu ${formatMoney(valor)}.`;
+  }
+
+  /* =====================
+     FIXO
+  ===================== */
+  if (comando === "fixo") {
+    const valor = parseFloat(partes[0]);
+    const desc = partes[1];
+    const tipo = partes[2];
+    const meses = parseInt(partes[3]);
+
+    if (isNaN(valor) || !desc || !tipo)
+      return "⚠️ Use: !fixo/<nome> <valor> <desc> <todo|parcelado> [meses]";
+
+    db.addFixo(nome, valor, desc, tipo, meses);
+    return `📌 Fixo registrado para ${capitalize(nome)}.`;
+  }
+
+  /* =====================
+     LIMITE
+  ===================== */
+  if (comando === "limite") {
+    const valor = parseFloat(partes[0]);
+    if (isNaN(valor)) return "⚠️ Use: !limite/<nome> <valor>";
+
+    db.setLimite(nome, valor);
+    return `📊 Limite de ${capitalize(nome)} definido em ${formatMoney(valor)}.`;
+  }
+
+  /* =====================
+     META
+  ===================== */
+  if (comando === "meta") {
+    const valor = parseFloat(partes[0]);
+    if (isNaN(valor)) return "⚠️ Use: !meta/<nome> <valor>";
+
+    db.setMeta(nome, valor);
+    return `🎯 Meta de economia de ${capitalize(nome)} definida em ${formatMoney(valor)}.`;
+  }
+
+  /* =====================
+     INÍCIO FINANCEIRO
+  ===================== */
+  if (comando === "iniciofinanceiro") {
+    const dia = parseInt(partes[0]);
+
+    if (isNaN(dia) || dia < 1 || dia > 28)
+      return "⚠️ Use: !iniciofinanceiro/<nome> <dia> (1 a 28)";
+
+    db.setInicioFinanceiro(nome, dia);
+    return `📅 Mês financeiro de ${capitalize(nome)} definido para iniciar no dia ${dia}.`;
+  }
+
+  /* =====================
+     PREVISÃO (MÊS FINANCEIRO)
+  ===================== */
+  if (comando === "previsao") {
+    const inicio = db.getInicioFinanceiro(nome) || 1;
+
+    const hoje = new Date();
+    const diaHoje = hoje.getDate();
+    let ano = hoje.getFullYear();
+    let mes = hoje.getMonth();
+
+    if (diaHoje < inicio) mes--;
+
+    const inicioPeriodo = new Date(ano, mes, inicio);
+    const fimPeriodo = new Date(ano, mes + 1, inicio - 1);
+
+    const gastos = db.getGastosPeriodo(nome, inicioPeriodo, hoje);
+    const diasDecorridos =
+      Math.max(1, Math.ceil((hoje - inicioPeriodo) / (1000 * 60 * 60 * 24)));
+
+    const media = gastos / diasDecorridos;
+    const diasTotais =
+      Math.ceil((fimPeriodo - inicioPeriodo) / (1000 * 60 * 60 * 24)) + 1;
+
+    const previsao = media * diasTotais;
+
+    return `📅 Previsão de ${capitalize(nome)}: ${formatMoney(previsao)} até o fim do mês financeiro.`;
+  }
+
+  /* =====================
+     FECHAR MÊS
+  ===================== */
+  if (comando === "fechar_mes") {
+    db.advanceMonth(nome);
+    return `📆 Mês de ${capitalize(nome)} fechado. Parcelas atualizadas.`;
   }
 
   /* =====================
@@ -116,12 +253,7 @@ O sistema usa ID interno com segurança.
         txt += `${i + 1}) [${g.data}] ${capitalize(g.categoria)} - ${formatMoney(g.valor)}\n`;
       });
 
-      txt += `
-\nUse:
-!corrigir/${nome} <número> valor <novo_valor>
-!corrigir/${nome} <número> categoria <nova_categoria>
-!corrigir/${nome} <número> valor <novo_valor> categoria <nova_categoria>
-`;
+      txt += `\nUse:\n!corrigir/${nome} <número> valor <novo_valor>\n!corrigir/${nome} <número> categoria <nova_categoria>`;
       return txt;
     }
 
@@ -136,9 +268,6 @@ O sistema usa ID interno com segurança.
       if (partes[i] === "valor") novoValor = parseFloat(partes[i + 1]);
       if (partes[i] === "categoria") novaCategoria = partes[i + 1];
     }
-
-    if (novoValor === undefined && !novaCategoria)
-      return "⚠️ Nada para corrigir.";
 
     db.updateGasto(gasto.id, {
       valor: isNaN(novoValor) ? undefined : novoValor,

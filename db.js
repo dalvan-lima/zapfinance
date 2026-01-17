@@ -39,6 +39,11 @@ CREATE TABLE IF NOT EXISTS metas (
   nome TEXT PRIMARY KEY,
   valor REAL
 );
+
+CREATE TABLE IF NOT EXISTS inicio_financeiro (
+  nome TEXT PRIMARY KEY,
+  dia INTEGER
+);
 `);
 
 /* =====================
@@ -130,6 +135,23 @@ function setMeta(nome, valor) {
 }
 
 /* =====================
+   INÍCIO FINANCEIRO
+===================== */
+function setInicioFinanceiro(nome, dia) {
+  db.prepare(`
+    INSERT INTO inicio_financeiro (nome, dia)
+    VALUES (?, ?)
+    ON CONFLICT(nome) DO UPDATE SET dia = excluded.dia
+  `).run(nome, dia);
+}
+
+function getInicioFinanceiro(nome) {
+  return db.prepare(`
+    SELECT dia FROM inicio_financeiro WHERE nome=?
+  `).get(nome)?.dia;
+}
+
+/* =====================
    CONSULTAS
 ===================== */
 function getResumo(nome) {
@@ -192,6 +214,18 @@ function getReceitas(nome) {
 }
 
 /* =====================
+   GASTOS POR PERÍODO
+===================== */
+function getGastosPeriodo(nome, inicio, fim) {
+  return db.prepare(`
+    SELECT SUM(valor) total
+    FROM gastos
+    WHERE nome=?
+      AND date(data) BETWEEN date(?) AND date(?)
+  `).get(nome, inicio.toISOString(), fim.toISOString())?.total || 0;
+}
+
+/* =====================
    FECHAR MÊS
 ===================== */
 function advanceMonth(nome) {
@@ -222,11 +256,16 @@ module.exports = {
   setLimite,
   setMeta,
 
+  setInicioFinanceiro,
+  getInicioFinanceiro,
+
   getResumo,
   getTotalGastos,
   getLimite,
   getMeta,
   getReceitas,
+
+  getGastosPeriodo,
 
   advanceMonth
 };
