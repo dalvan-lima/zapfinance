@@ -217,13 +217,17 @@ function getReceitas(nome) {
    GASTOS POR PERÍODO
 ===================== */
 function getGastosPeriodo(nome, inicio, fim) {
+  const inicioStr = inicio.toISOString().slice(0, 10);
+  const fimStr = fim.toISOString().slice(0, 10);
+
   return db.prepare(`
     SELECT SUM(valor) total
     FROM gastos
     WHERE nome=?
       AND date(data) BETWEEN date(?) AND date(?)
-  `).get(nome, inicio.toISOString(), fim.toISOString())?.total || 0;
+  `).get(nome, inicioStr, fimStr)?.total || 0;
 }
+
 
 /* =====================
    FECHAR MÊS

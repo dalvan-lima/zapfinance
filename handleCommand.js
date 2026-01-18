@@ -36,7 +36,7 @@ function handleCommand(message) {
   ===================== */
   if (texto.startsWith("!instrucoes")) {
     return (
-`🤖 *ZapFinance — Instruções de uso*
+      `🤖 *ZapFinance — Instruções de uso*
 
 Todos os comandos seguem o padrão:
 !comando/nome <valores>
@@ -188,6 +188,51 @@ Todos os comandos seguem o padrão:
     db.setMeta(nome, valor);
     return `🎯 Meta de economia de ${capitalize(nome)} definida em ${formatMoney(valor)}.`;
   }
+
+  /* =====================
+   RESUMO
+===================== */
+  if (comando === "resumo") {
+    const resumo = db.getResumo(nome);
+    const totalGastos = db.getTotalGastos(nome);
+    const receitas = resumo.receitas;
+    const fixos = resumo.fixos;
+    const saldo = receitas - totalGastos;
+
+    let txt = `📊 *Resumo financeiro de ${capitalize(nome)}*\n\n`;
+
+    txt += `💰 Receitas: ${formatMoney(receitas)}\n`;
+    txt += `📉 Gastos totais: ${formatMoney(totalGastos)}\n`;
+    txt += `📌 Fixos: ${formatMoney(fixos)}\n`;
+    txt += `💼 Saldo atual: ${formatMoney(saldo)}\n`;
+
+    /* ===== LIMITE ===== */
+    const limite = db.getLimite(nome);
+    if (limite) {
+      const pct = (totalGastos / limite) * 100;
+      txt += `\n📊 Limite: ${formatMoney(limite)} (${pct.toFixed(1)}%)`;
+
+      if (pct > 100) txt += `\n🚨 Limite estourado!`;
+      else if (pct > 80) txt += `\n⚠️ Atenção ao limite.`;
+      else txt += `\n✅ Dentro do limite.`;
+    }
+
+    /* ===== META ===== */
+    const meta = db.getMeta(nome);
+    if (meta) {
+      txt += `\n\n🎯 Meta de economia: ${formatMoney(meta)}`;
+
+      if (saldo >= meta) {
+        txt += `\n✅ Meta atingida ou garantida!`;
+      } else {
+        const falta = meta - saldo;
+        txt += `\n⚠️ Faltam ${formatMoney(falta)} para atingir a meta.`;
+      }
+    }
+
+    return txt;
+  }
+
 
   /* =====================
      INÍCIO FINANCEIRO
